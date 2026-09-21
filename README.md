@@ -1,3 +1,6 @@
+<div align="center">
+
+<pre>
                          mntr//
 
              SEE WHAT CHANGED IN YOUR MONEY.
@@ -6,6 +9,13 @@
 |  local-first spending tracker                    |
 |  record  ->  compare  ->  understand             |
 +--------------------------------------------------+
+</pre>
+
+<a href="https://montara-9on.pages.dev">Live App</a>
+&nbsp;·&nbsp;
+<a href="https://github.com/LexterMorgan/montara">Source</a>
+
+</div>
 
 [ LIVE APP ]  https://montara-9on.pages.dev
 [ SOURCE  ]   https://github.com/LexterMorgan/montara

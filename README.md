@@ -1,4 +1,6 @@
-<div align="center">
+<div align="center"><img src="./public/montara-logo.png" alt="Montara logo" width="320" />
+
+
 
 <pre>
                          mntr//

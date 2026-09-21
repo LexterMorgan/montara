@@ -17,9 +17,6 @@
 
 </div>
 
-[ LIVE APP ]  https://montara-9on.pages.dev
-[ SOURCE  ]   https://github.com/LexterMorgan/montara
-
 ## [ ABOUT ]
 
 Montara is a fast, local-first spending tracker.

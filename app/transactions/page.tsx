@@ -9,10 +9,11 @@ import { DataTools } from "@/components/data-tools";
 import { UndoToast } from "@/components/undo-toast";
 import { formatDate, formatDateRange, money, total, type Classification, type Expense } from "@/lib/calc";
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
-import { allCategories, loadPrefs, useExpenses } from "@/lib/storage";
+import { allCategories, loadPrefs } from "@/lib/storage";
+import { useExpenses } from "@/components/expense-provider";
 
 function TransactionsPage() {
-  const { expenses, loading, add, update, remove, restore, addMany, refresh } = useExpenses();
+  const { expenses, loading, error, synced, add, update, remove, restore, addMany, refresh } = useExpenses();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
   const [classification, setClassification] = useState<"all" | Classification>("all");
@@ -67,28 +68,37 @@ function TransactionsPage() {
     setTo("");
   }
 
-  function saveDraft(draft: Draft, editingId?: string) {
-    if (editingId) update(editingId, draft);
-    else add(draft);
+  async function saveDraft(draft: Draft, editingId?: string) {
+    // Throws on synced-write failure: EntryForm stays open and shows error.
+    if (editingId) await update(editingId, draft);
+    else await add(draft);
     setPrefsTick((n) => n + 1);
     setEditing(null);
     setEntryOpen(false);
   }
 
-  function askDelete(r: Expense) {
-    if (window.confirm(`Delete ${money(r.amount)} · ${formatDate(r.date)}? This cannot be undone.`)) {
-      remove(r.id);
+  async function askDelete(r: Expense) {
+    if (!window.confirm(`Delete ${money(r.amount)} · ${formatDate(r.date)}? This cannot be undone.`)) return;
+    try {
+      await remove(r.id);
       setDeleted(r);
+    } catch {
+      // Hook error banner below shows the retryable message.
     }
   }
 
-  function undoDelete() {
-    if (deleted) restore(deleted);
-    setDeleted(null);
+  async function undoDelete() {
+    if (!deleted) return;
+    try {
+      await restore(deleted);
+      setDeleted(null);
+    } catch {
+      // Hook error banner below shows the retryable message.
+    }
   }
 
-  function importRows(rows: CsvImportRow[]) {
-    addMany(rows);
+  async function importRows(rows: CsvImportRow[]) {
+    await addMany(rows);
     setPrefsTick((n) => n + 1);
   }
 
@@ -98,17 +108,24 @@ function TransactionsPage() {
         compact
         eyebrow="Transactions"
         title="Keep every expense easy to find."
-        description="Search, filter, edit, and export the records stored in this browser."
+        description="Search, filter, edit, and export your expense records."
         actionLabel=""
         actionHref=""
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[var(--muted-foreground)]">Search, edit, or record — all stored in this browser.</p>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          {synced ? "Synced across your devices." : "Stored on this device."}
+        </p>
         <Button onClick={() => { setEditing(null); setEntryOpen(true); }}>
           + Record expense
         </Button>
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-[var(--destructive)]">
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -159,7 +176,7 @@ function TransactionsPage() {
               Export filtered (CSV)
             </Button>
           </div>
-          <DataTools onRestored={() => refresh()} onImported={(rows) => importRows(rows)} />
+          <DataTools onRestored={() => { void refresh(); }} onImported={(rows) => importRows(rows)} />
         </div>
       </div>
 
@@ -220,6 +237,7 @@ function TransactionsPage() {
           categories={categories}
           recentCategories={recentCategories}
           expenses={expenses}
+          submitError={error}
           onSave={saveDraft}
           onClose={() => setEntryOpen(false)}
         />
@@ -244,6 +262,7 @@ function TransactionsPage() {
           categories={categories}
           recentCategories={[]}
           expenses={expenses}
+          submitError={error}
           onSave={saveDraft}
           onClose={() => setEditing(null)}
         />

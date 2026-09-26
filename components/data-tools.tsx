@@ -11,7 +11,7 @@ export function DataTools({
   onImported,
 }: {
   onRestored: () => void;
-  onImported: (rows: CsvImportRow[]) => void;
+  onImported: (rows: CsvImportRow[]) => Promise<void>;
 }) {
   return (
     <details>

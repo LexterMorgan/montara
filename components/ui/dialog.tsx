@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "./cn";
 
 const FOCUSABLE =
@@ -56,7 +57,7 @@ export function Dialog({
   }
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onMouseDown={(e) => {
@@ -76,7 +77,8 @@ export function Dialog({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

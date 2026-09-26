@@ -25,7 +25,8 @@ import {
   type Period,
 } from "@/lib/calc";
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
-import { allCategories, useExpenses, usePrefsTick } from "@/lib/storage";
+import { allCategories, usePrefsTick } from "@/lib/storage";
+import { useExpenses } from "@/components/expense-provider";
 
 const PERIODS: Period[] = ["Day", "Week", "Month", "Year"];
 
@@ -39,7 +40,7 @@ function signalHref(s: { filter: { category?: string; classification?: string; s
 }
 
 export default function OverviewPage() {
-  const { expenses, loading, add, update, remove, restore, addMany, refresh } = useExpenses();
+  const { expenses, loading, error, synced, add, update, remove, restore, addMany, refresh } = useExpenses();
   const [today, setToday] = useState(() => todayJakarta());
   const [period, setPeriod] = useState<Period>("Month");
   const [anchor, setAnchor] = useState(() => todayJakarta());
@@ -99,10 +100,11 @@ export default function OverviewPage() {
     setEntryOpen(true);
   }
 
-  function saveDraft(draft: Draft, editingId?: string) {
-    if (editingId) update(editingId, draft);
+  async function saveDraft(draft: Draft, editingId?: string) {
+    // Throws on synced-write failure: EntryForm stays open and shows error.
+    if (editingId) await update(editingId, draft);
     else {
-      const row = add(draft);
+      const row = await add(draft);
       // Jump to the saved date so the new row + total are visible.
       setAnchor(row.date);
     }
@@ -112,20 +114,30 @@ export default function OverviewPage() {
     requestAnimationFrame(() => recordRef.current?.focus());
   }
 
-  function askDelete(e: Expense) {
-    if (window.confirm(`Delete ${money(e.amount)} · ${formatDate(e.date)}? This cannot be undone.`)) {
-      remove(e.id);
+  async function askDelete(e: Expense) {
+    if (!window.confirm(`Delete ${money(e.amount)} · ${formatDate(e.date)}? This cannot be undone.`)) return;
+    try {
+      // State changes only after the active store confirms; failure keeps
+      // existing rows visible and surfaces error below.
+      await remove(e.id);
       setDeleted(e);
+    } catch {
+      // Hook error banner below shows the retryable message.
     }
   }
 
-  function undoDelete() {
-    if (deleted) restore(deleted);
-    setDeleted(null);
+  async function undoDelete() {
+    if (!deleted) return;
+    try {
+      await restore(deleted);
+      setDeleted(null);
+    } catch {
+      // Hook error banner below shows the retryable message.
+    }
   }
 
-  function importRows(rows: CsvImportRow[]) {
-    addMany(rows);
+  async function importRows(rows: CsvImportRow[]) {
+    await addMany(rows);
     setPrefsTick((n) => n + 1);
   }
 
@@ -136,7 +148,7 @@ export default function OverviewPage() {
         heading="p"
         eyebrow="Overview"
         title="See where your spending moved."
-        description="Compare periods, review the signals, and record expenses from one local dashboard."
+        description="Compare periods, review the signals, and record expenses from one dashboard."
         actionLabel=""
         actionHref=""
       />
@@ -149,6 +161,14 @@ export default function OverviewPage() {
           + Record <kbd className="mono text-xs">N</kbd>
         </Button>
       </div>
+      <p className="text-xs text-[var(--muted-foreground)]" aria-live="polite">
+        {synced ? "Synced across your devices." : "Stored on this device."}
+      </p>
+      {error && (
+        <p role="alert" className="text-sm text-[var(--destructive)]">
+          {error}
+        </p>
+      )}
 
       <section aria-label="Selected period" className="sticky top-0 bg-[var(--background)] py-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -322,7 +342,7 @@ export default function OverviewPage() {
         </div>
         <DataTools
           onRestored={() => {
-            refresh();
+            void refresh();
             setPrefsTick((n) => n + 1);
           }}
           onImported={(rows) => importRows(rows)}
@@ -354,6 +374,7 @@ export default function OverviewPage() {
           categories={categories}
           recentCategories={recentCategories}
           expenses={expenses}
+          submitError={error}
           onSave={saveDraft}
           onClose={() => {
             setEntryOpen(false);

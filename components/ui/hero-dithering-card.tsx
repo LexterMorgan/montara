@@ -42,7 +42,7 @@ export function CTASection({
   heading = "h1",
   eyebrow = "Local-first spending tracker",
   title = "See what changed in your money.",
-  description = "Record expenses, compare periods, and inspect the purchases behind each change. Your records stay in this browser.",
+  description = "Record expenses, compare periods, and inspect the purchases behind each change. Works without an account; optional sync across your devices.",
   actionLabel = "Open overview",
   actionHref = "/overview",
 }: CTASectionProps) {
@@ -99,7 +99,7 @@ export function CTASection({
               <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-1" />
             </a>
           )}
-          {!compact && <p className="mono mt-5 text-xs text-[var(--muted-foreground)]">Your data stays in this browser · IDR only · no account required</p>}
+          {!compact && <p className="mono mt-5 text-xs text-[var(--muted-foreground)]">Private by default · IDR only · optional account for sync</p>}
         </div>
       </div>
     </section>

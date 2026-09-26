@@ -82,17 +82,17 @@ export function parseBackup(text: string): BackupPayload {
   };
 }
 
-export function buildBackup(): BackupPayload {
+export function buildBackup(activeExpenses?: Expense[]): BackupPayload {
   return {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    expenses: loadExpenses(),
+    expenses: activeExpenses ?? loadExpenses(),
     prefs: loadPrefs(),
   };
 }
 
-export function downloadBackup(): void {
-  const blob = new Blob([JSON.stringify(buildBackup(), null, 2)], { type: "application/json" });
+export function downloadBackup(activeExpenses?: Expense[]): void {
+  const blob = new Blob([JSON.stringify(buildBackup(activeExpenses), null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

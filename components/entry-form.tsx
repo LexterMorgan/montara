@@ -16,11 +16,12 @@ type Props = {
   categories: string[];
   recentCategories: string[];
   expenses?: Expense[];
-  onSave: (draft: Draft, editingId?: string) => void;
+  submitError?: string;
+  onSave: (draft: Draft, editingId?: string) => void | Promise<void>;
   onClose: () => void;
 };
 
-export function EntryForm({ open, editing, defaultCategory, defaultClassification, categories, recentCategories, expenses = [], onSave, onClose }: Props) {
+export function EntryForm({ open, editing, defaultCategory, defaultClassification, categories, recentCategories, expenses = [], submitError = "", onSave, onClose }: Props) {
   const today = todayJakarta();
   const [initial] = useState(() => ({
     amount: editing ? String(editing.amount) : "",
@@ -62,7 +63,7 @@ export function EntryForm({ open, editing, defaultCategory, defaultClassificatio
     onClose();
   }
 
-  function save(e?: React.FormEvent) {
+  async function save(e?: React.FormEvent) {
     e?.preventDefault();
     if (saving) return;
     const now = Date.now();
@@ -77,17 +78,22 @@ export function EntryForm({ open, editing, defaultCategory, defaultClassificatio
     }
     lastTap.current = now;
     setSaving(true);
-    onSave(
-      {
-        amount: Number(draft.amount),
-        date: draft.date,
-        category: draft.category.trim(),
-        classification: draft.classification as Classification,
-        merchant: draft.merchant.trim(),
-        note: draft.note.trim(),
-      },
-      editing?.id,
-    );
+    try {
+      await onSave(
+        {
+          amount: Number(draft.amount),
+          date: draft.date,
+          category: draft.category.trim(),
+          classification: draft.classification as Classification,
+          merchant: draft.merchant.trim(),
+          note: draft.note.trim(),
+        },
+        editing?.id,
+      );
+    } catch {
+      // Parent keeps the hook error in submitError; stay open for retry.
+      setSaving(false);
+    }
   }
 
   const ordered = [...recentCategories.filter((c) => categories.includes(c)), ...categories.filter((c) => !recentCategories.includes(c))];
@@ -277,6 +283,11 @@ export function EntryForm({ open, editing, defaultCategory, defaultClassificatio
             Cancel
           </Button>
         </div>
+        {submitError && (
+          <p role="alert" className="text-xs text-[var(--destructive)]">
+            {submitError}
+          </p>
+        )}
         <p className="text-xs text-[var(--muted-foreground)]">
           <kbd className="mono">Tab</kbd> next · <kbd className="mono">⌘/Ctrl+Enter</kbd> save · <kbd className="mono">N</kbd> new ·{" "}
           <kbd className="mono">Esc</kbd> close

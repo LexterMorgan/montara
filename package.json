@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/calc.test.ts lib/csv.test.ts lib/backup.test.ts"
+    "test": "node --experimental-strip-types --test lib/calc.test.ts lib/csv.test.ts lib/backup.test.ts lib/sync.test.ts"
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.81",
+    "@supabase/supabase-js": "2.117.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.47.0",

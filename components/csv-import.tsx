@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { parseCSVImport, type CsvImportRow } from "@/lib/csv";
 
-// Local CSV import: reads our own export shape, validates with row numbers,
-// confirms, then hands fresh rows to the caller. Nothing leaves the browser.
-export function CsvImportControls({ onImport }: { onImport: (rows: CsvImportRow[]) => void }) {
+// CSV import: reads our own export shape, validates with row numbers,
+// confirms, then hands fresh rows to the caller. The caller persists to the
+// active store (local or synced); success shows only after it resolves.
+export function CsvImportControls({ onImport }: { onImport: (rows: CsvImportRow[]) => Promise<void> }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -22,8 +23,12 @@ export function CsvImportControls({ onImport }: { onImport: (rows: CsvImportRow[
     if (!window.confirm(`Import ${rows.length} expenses from this CSV? They will be added to your existing records.`)) {
       return;
     }
-    onImport(rows);
-    setMessage({ kind: "ok", text: `Imported ${rows.length} expenses from CSV.` });
+    try {
+      await onImport(rows);
+      setMessage({ kind: "ok", text: `Imported ${rows.length} expenses from CSV.` });
+    } catch (err) {
+      setMessage({ kind: "error", text: err instanceof Error ? err.message : "Import failed. Try again." });
+    }
   }
 
   return (

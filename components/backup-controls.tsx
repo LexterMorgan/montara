@@ -3,16 +3,20 @@
 import { useRef, useState } from "react";
 import { Button } from "./ui/button";
 import { BACKUP_FILENAME, downloadBackup, parseBackup } from "@/lib/backup";
-import { EXPENSE_KEY, PREFS_KEY } from "@/lib/storage";
+import { PREFS_KEY } from "@/lib/storage";
+import { useExpenses } from "./expense-provider";
 
-// Local JSON backup/restore. The file never leaves the browser: download + file input only.
+// JSON backup/restore against the active store. The backup file itself never
+// leaves the browser; restore writes expenses through replaceAll (local or
+// synced) while preferences stay in localStorage.
 export function BackupControls({ onRestored }: { onRestored: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const { expenses, replaceAll } = useExpenses();
 
   function backup() {
     try {
-      downloadBackup();
+      downloadBackup(expenses);
       setMessage({ kind: "ok", text: `Saved ${BACKUP_FILENAME}. Keep it somewhere safe.` });
     } catch {
       setMessage({ kind: "error", text: "Backup failed in this browser. Try again." });
@@ -30,16 +34,21 @@ export function BackupControls({ onRestored }: { onRestored: () => void }) {
     }
     if (
       !window.confirm(
-        `Replace local data with this backup (${payload.expenses.length} expenses, exported ${payload.exportedAt})? This cannot be undone.`,
+        `Replace current data with this backup (${payload.expenses.length} expenses, exported ${payload.exportedAt})? This cannot be undone.`,
       )
     ) {
       return;
     }
     try {
-      localStorage.setItem(EXPENSE_KEY, JSON.stringify(payload.expenses));
       localStorage.setItem(PREFS_KEY, JSON.stringify(payload.prefs));
     } catch {
       setMessage({ kind: "error", text: "Restore failed: browser storage is full." });
+      return;
+    }
+    try {
+      await replaceAll(payload.expenses);
+    } catch (err) {
+      setMessage({ kind: "error", text: err instanceof Error ? err.message : "Restore failed. Try again." });
       return;
     }
     onRestored();

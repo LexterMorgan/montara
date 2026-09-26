@@ -1,7 +1,7 @@
 // Tiny localStorage wrapper per ARCHITECTURE §3. No servers, no deps.
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Classification, Expense } from "./calc";
 
 export const EXPENSE_KEY = "montara.expenses.v1";
@@ -90,71 +90,6 @@ export function savePrefs(patch: Partial<Prefs>): Prefs {
     // prefs are best-effort; expenses already saved
   }
   return next;
-}
-
-export function useExpenses() {
-  const [expenses, setExpenses] = useState<Expense[] | null>(null);
-
-  useEffect(() => {
-    setExpenses(loadExpenses());
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === EXPENSE_KEY) setExpenses(loadExpenses());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  useEffect(() => {
-    if (expenses === null) return;
-    try {
-      localStorage.setItem(EXPENSE_KEY, JSON.stringify(expenses));
-    } catch {
-      window.alert("Browser storage is full. Free space, then try again — your entry is still on screen.");
-    }
-  }, [expenses]);
-
-  const add = useCallback((draft: Omit<Expense, "id" | "createdAt" | "updatedAt">) => {
-    const now = new Date().toISOString();
-    const row: Expense = { ...draft, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
-    setExpenses((prev) => [row, ...(prev ?? [])]);
-    savePrefs({ lastCategory: draft.category, lastClassification: draft.classification });
-    return row;
-  }, []);
-
-  const update = useCallback((id: string, patch: Omit<Expense, "id" | "createdAt" | "updatedAt">) => {
-    setExpenses((prev) => (prev ?? []).map((r) => (r.id === id ? { ...r, ...patch, updatedAt: new Date().toISOString() } : r)));
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setExpenses((prev) => (prev ?? []).filter((r) => r.id !== id));
-  }, []);
-
-  // Re-insert an exact row (undo delete): original id and timestamps kept.
-  const restore = useCallback((row: Expense) => {
-    setExpenses((prev) => {
-      const list = prev ?? [];
-      if (list.some((r) => r.id === row.id)) return list;
-      return [row, ...list];
-    });
-  }, []);
-
-  // Bulk add with fresh ids/timestamps (CSV import). One write, one prefs save.
-  const addMany = useCallback((drafts: Omit<Expense, "id" | "createdAt" | "updatedAt">[]) => {
-    if (drafts.length === 0) return [];
-    const now = new Date().toISOString();
-    const rows: Expense[] = drafts.map((d) => ({ ...d, id: crypto.randomUUID(), createdAt: now, updatedAt: now }));
-    setExpenses((prev) => [...rows, ...(prev ?? [])]);
-    const last = drafts[drafts.length - 1];
-    savePrefs({ lastCategory: last.category, lastClassification: last.classification });
-    return rows;
-  }, []);
-
-  // Re-read after an external local write (e.g. JSON restore in this tab).
-  const refresh = useCallback(() => {
-    setExpenses(loadExpenses());
-  }, []);
-
-  return { expenses: expenses ?? [], loading: expenses === null, add, update, remove, restore, addMany, refresh };
 }
 
 export function usePrefsTick(deps: unknown[]): Prefs {

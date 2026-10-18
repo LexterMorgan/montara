@@ -8,6 +8,7 @@ import { EntryForm, type Draft } from "@/components/entry-form";
 import { DataTools } from "@/components/data-tools";
 import { UndoToast } from "@/components/undo-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { QuickAdd } from "@/components/quick-add";
 import { formatDate, formatDateRange, money, total, type Classification, type Expense } from "@/lib/calc";
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
 import { allCategories, loadPrefs } from "@/lib/storage";
@@ -203,6 +204,14 @@ function TransactionsPage() {
           <><span className="mono">{money(sum)}</span> recorded across <span className="mono">{filtered.length}</span> expenses · {rangeLabel}</>
         )}
       </p>
+
+      <QuickAdd
+        onSave={saveDraft}
+        defaultCategory={prefs.lastCategory}
+        defaultClassification={prefs.lastClassification}
+        categories={categories}
+        recentCategories={recentCategories}
+      />
 
       {loading ? (
         <SkeletonRows rows={5} />

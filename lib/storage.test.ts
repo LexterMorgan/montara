@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { sameIds } from "./storage.ts";
+import { orderCategories, sameIds } from "./storage.ts";
 import type { Expense } from "./calc.ts";
 
 const expense = (id: string): Expense => ({
@@ -29,4 +29,16 @@ test("sameIds rejects a different id", () => {
 
 test("sameIds rejects duplicates standing in for a missing id", () => {
   assert.equal(sameIds([expense("a"), expense("a")], [expense("a"), expense("b")]), false);
+});
+
+test("orderCategories puts recents first, then the rest", () => {
+  assert.deepEqual(orderCategories(["Work Tools", "Food"], ["Food", "Housing", "Work Tools"]), ["Work Tools", "Food", "Housing"]);
+});
+
+test("orderCategories drops duplicates without dropping unknown recents", () => {
+  assert.deepEqual(orderCategories(["Food", "Food", "Legacy"], ["Food", "Housing"]), ["Food", "Legacy", "Housing"]);
+});
+
+test("orderCategories is the plain list when there are no recents", () => {
+  assert.deepEqual(orderCategories([], ["Food", "Housing"]), ["Food", "Housing"]);
 });

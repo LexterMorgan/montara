@@ -9,6 +9,7 @@ import { DataTools } from "@/components/data-tools";
 import { ProfileControl } from "@/components/profile-control";
 import { UndoToast } from "@/components/undo-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { QuickAdd } from "@/components/quick-add";
 import {
   averagePerDay,
   buildSignals,
@@ -211,6 +212,14 @@ export default function OverviewPage() {
           {formatDateRange(cmp.curStart, cmp.curEnd)} · Asia/Jakarta
         </p>
       </section>
+
+      <QuickAdd
+        onSave={saveDraft}
+        defaultCategory={prefs.lastCategory}
+        defaultClassification={prefs.lastClassification}
+        categories={categories}
+        recentCategories={recentCategories}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start lg:gap-x-8">
         <div className="flex flex-col gap-6">

@@ -109,6 +109,18 @@ export function usePrefsTick(deps: unknown[]): Prefs {
   return prefs;
 }
 
+// Recent categories first, then the rest, without duplicates.
+export function orderCategories(recent: string[], all: string[]): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const c of [...recent, ...all]) {
+    if (seen.has(c)) continue;
+    seen.add(c);
+    ordered.push(c);
+  }
+  return ordered;
+}
+
 export function allCategories(expenses: Expense[]): string[] {
   const seen = new Set([...DEFAULT_CATEGORIES, ...expenses.map((e) => e.category)]);
   return [...seen].sort((a, b) => a.localeCompare(b));

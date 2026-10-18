@@ -93,7 +93,7 @@ export function CTASection({
           {actionHref && actionLabel && (
             <a
               href={actionHref}
-              className="group mt-8 inline-flex h-12 items-center justify-center gap-3 rounded-full bg-[var(--primary)] px-8 text-sm font-medium text-[var(--primary-foreground)] transition-transform hover:scale-[1.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] active:scale-[.98]"
+              className="group mt-8 inline-flex h-12 items-center justify-center gap-3 rounded-full bg-[var(--primary)] px-8 text-sm font-medium text-[var(--primary-foreground)] transition-transform hover:scale-[1.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] active:scale-[.98]"
             >
               {actionLabel}
               <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-1" />

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import type { Draft } from "./entry-form";
-import { todayJakarta, validateDraft, type Classification } from "@/lib/calc";
+import { todayJakarta, validateDraft, money, type Classification } from "@/lib/calc";
 import { orderCategories } from "@/lib/storage";
 
 type QuickAddProps = {
@@ -70,7 +70,7 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
   }
 
   return (
-    <form noValidate onSubmit={save} aria-label="Quick add expense" className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3">
+    <form noValidate onSubmit={save} aria-label="Quick add expense" className="surface-in rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3">
       <div className="flex items-center gap-2">
         <label htmlFor="qa-amount" className="sr-only">
           Amount · IDR
@@ -93,14 +93,19 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
               setError("Use digits only, no separators or decimals.");
             }
           }}
-          className="min-w-0 flex-1"
+          className="mono h-12 min-w-0 flex-1 text-[20px] sm:h-11 sm:text-[24px]"
         />
         <Button type="submit" disabled={busy}>
           {busy ? "Adding…" : "Add"}
         </Button>
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
+      {/* Decorative echo of the digits above: the input stays the accessible value. */}
+      <p aria-hidden="true" className="mono mt-1 h-5 text-sm text-[var(--muted-foreground)]">
+        {amount ? money(Number(amount)) : ""}
+      </p>
+
+      <div className="mt-3 flex items-center gap-2">
         <div role="group" aria-label="Category" className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
           {ordered.map((c) => (
             <Chip
@@ -146,7 +151,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius)] border border-[var(--border)] px-3 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:min-h-9 ${
+      className={`inline-flex min-h-11 shrink-0 items-center rounded-[var(--radius)] border border-[var(--border)] px-3 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--primary)] sm:min-h-9 ${
         active ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-transparent hover:bg-[var(--muted)]"
       }`}
     >

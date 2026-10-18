@@ -9,6 +9,7 @@ import { DataTools } from "@/components/data-tools";
 import { UndoToast } from "@/components/undo-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuickAdd } from "@/components/quick-add";
+import { cn } from "@/components/ui/cn";
 import { formatDate, formatDateRange, money, total, type Classification, type Expense } from "@/lib/calc";
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
 import { allCategories, loadPrefs } from "@/lib/storage";
@@ -27,6 +28,8 @@ function TransactionsPage() {
   const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // Id of the row just added, so only that row plays the rise animation once.
+  const [newId, setNewId] = useState<string | null>(null);
   const [entryOpen, setEntryOpen] = useState(false);
   const [prefsTick, setPrefsTick] = useState(0);
 
@@ -43,6 +46,14 @@ function TransactionsPage() {
 
   const categories = useMemo(() => allCategories(expenses), [expenses]);
   const prefs = useMemo(() => loadPrefs(), [prefsTick, expenses]);
+
+  // Let the rise animation finish, then forget the id so filters and re-renders
+  // never replay it.
+  useEffect(() => {
+    if (!newId) return;
+    const t = setTimeout(() => setNewId(null), 200);
+    return () => clearTimeout(t);
+  }, [newId]);
   const recentCategories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const e of expenses) counts.set(e.category, (counts.get(e.category) ?? 0) + 1);
@@ -77,7 +88,10 @@ function TransactionsPage() {
   async function saveDraft(draft: Draft, editingId?: string) {
     // Throws on synced-write failure: EntryForm stays open and shows error.
     if (editingId) await update(editingId, draft);
-    else await add(draft);
+    else {
+      const row = await add(draft);
+      setNewId(row.id);
+    }
     setPrefsTick((n) => n + 1);
     setEditing(null);
     setEntryOpen(false);
@@ -231,7 +245,7 @@ function TransactionsPage() {
       ) : (
         <ul>
           {filtered.map((r) => (
-            <li key={r.id} className="flex items-start justify-between gap-3 border-b border-[var(--border)] py-2">
+            <li key={r.id} className={cn("flex items-start justify-between gap-3 border-b border-[var(--border)] py-2 transition-colors hover:bg-[var(--muted)]", r.id === newId && "surface-in")}>
               <div className="min-w-0">
                 <p className="truncate text-sm">{r.merchant || r.category}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">

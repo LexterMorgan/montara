@@ -10,6 +10,7 @@ import { ProfileControl } from "@/components/profile-control";
 import { UndoToast } from "@/components/undo-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuickAdd } from "@/components/quick-add";
+import { cn } from "@/components/ui/cn";
 import {
   averagePerDay,
   buildSignals,
@@ -53,6 +54,8 @@ export default function OverviewPage() {
   const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // Id of the row just added, so only that row plays the rise animation once.
+  const [newId, setNewId] = useState<string | null>(null);
   const [prefsTick, setPrefsTick] = useState(0);
   const recordRef = useRef<HTMLButtonElement>(null);
 
@@ -61,6 +64,15 @@ export default function OverviewPage() {
   }, []);
 
   const prefs = usePrefsTick([prefsTick, expenses]);
+
+  // Let the rise animation finish, then forget the id so filters and re-renders
+  // never replay it.
+  useEffect(() => {
+    if (!newId) return;
+    const t = setTimeout(() => setNewId(null), 200);
+    return () => clearTimeout(t);
+  }, [newId]);
+
   const categories = useMemo(() => allCategories(expenses), [expenses]);
   const recentCategories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -111,6 +123,7 @@ export default function OverviewPage() {
     if (editingId) await update(editingId, draft);
     else {
       const row = await add(draft);
+      setNewId(row.id);
       // Jump to the saved date so the new row + total are visible.
       setAnchor(row.date);
     }
@@ -277,7 +290,7 @@ export default function OverviewPage() {
                   key={s.id}
                   href={signalHref(s)}
                   aria-label={s.text}
-                  className="block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3 hover:bg-[var(--muted)]"
+                  className="block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3 transition-colors hover:bg-[var(--muted)]"
                 >
                   <span className="text-xs text-[var(--muted-foreground)]">{s.title}</span>
                   <span className="block text-sm">{s.text}</span>
@@ -343,7 +356,7 @@ export default function OverviewPage() {
             ) : (
               <ul>
                 {recent.map((r) => (
-                  <li key={r.id} className="flex items-start justify-between gap-3 border-b border-[var(--border)] py-2">
+                  <li key={r.id} className={cn("flex items-start justify-between gap-3 border-b border-[var(--border)] py-2 transition-colors hover:bg-[var(--muted)]", r.id === newId && "surface-in")}>
                     <div className="min-w-0">
                       <p className="truncate text-sm">{r.merchant || r.category}</p>
                       <p className="text-xs text-[var(--muted-foreground)]">

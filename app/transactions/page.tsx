@@ -158,7 +158,7 @@ function TransactionsPage() {
         </p>
       )}
 
-      <div className="flex flex-col gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3">
+      <div className="panel flex flex-col gap-2 p-3">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="block text-xs">
             Search merchant / note
@@ -231,7 +231,7 @@ function TransactionsPage() {
         <SkeletonRows rows={5} />
       ) : filtered.length === 0 ? (
         expenses.length === 0 ? (
-          <div className="rounded-[var(--radius)] border border-[var(--border)] p-4">
+          <div className="panel p-4">
             <p className="text-sm">No expenses yet.</p>
             <p className="mt-2">
               <Button onClick={() => { setEditing(null); setEntryOpen(true); }}>Record your first expense</Button>

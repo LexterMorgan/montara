@@ -75,15 +75,15 @@ export function CTASection({
         <div className={`relative z-10 flex ${height} flex-col items-center justify-center px-6 text-center ${compact ? "py-10" : "py-16"}`}>
           <p className="mono mb-4 text-xs uppercase tracking-[0.18em] text-[var(--primary)]">{eyebrow}</p>
           {heading === "p" ? (
-            <p id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl md:text-6xl"}`}>
+            <p id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-5xl sm:text-6xl md:text-7xl"}`}>
               {title}
             </p>
           ) : heading === "h2" ? (
-            <h2 id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl md:text-6xl"}`}>
+            <h2 id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-5xl sm:text-6xl md:text-7xl"}`}>
               {title}
             </h2>
           ) : (
-            <h1 id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl md:text-6xl"}`}>
+            <h1 id="hero-title" className={`max-w-3xl font-semibold tracking-tight ${compact ? "text-3xl sm:text-4xl" : "text-5xl sm:text-6xl md:text-7xl"}`}>
               {title}
             </h1>
           )}
@@ -99,7 +99,21 @@ export function CTASection({
               <ArrowRight aria-hidden="true" className="size-4 transition-transform group-hover:translate-x-1" />
             </a>
           )}
-          {!compact && <p className="mono mt-5 text-xs text-[var(--muted-foreground)]">Private by default · IDR only · optional account for sync</p>}
+          {!compact && (
+            <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+              {[
+                { figure: "IDR", label: "Only currency" },
+                { figure: "0", label: "Accounts required" },
+                { figure: "4", label: "Periods compared" },
+              ].map((s) => (
+                <li key={s.label} className="text-center">
+                  <span className="mono block text-[22px] font-semibold sm:text-[26px]">{s.figure}</span>
+                  <span className="label mt-1 block">{s.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!compact && <p className="mono mt-4 text-xs text-[var(--muted-foreground)]">Optional sync across your devices</p>}
         </div>
       </div>
     </section>

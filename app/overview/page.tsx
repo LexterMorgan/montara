@@ -236,9 +236,9 @@ export default function OverviewPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start lg:gap-x-8">
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="total-heading" aria-busy={loading} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-            <h2 id="total-heading" className="text-sm text-[var(--muted-foreground)]">Recorded total</h2>
-            <p className="mono my-2 text-[28px] font-semibold" aria-live="polite">
+          <section aria-labelledby="total-heading" aria-busy={loading} className="panel p-4">
+            <h2 id="total-heading" className="label">Recorded total</h2>
+            <p className="mono my-2 text-[32px] font-semibold text-[var(--primary)] sm:text-[44px]" aria-live="polite">
               {loading ? <Skeleton className="h-7 w-40" /> : money(amount)}
             </p>
             <p aria-live="polite" className="text-sm">
@@ -261,8 +261,8 @@ export default function OverviewPage() {
           </section>
 
           {rows.length > 0 && topCategory && largest && (
-            <section aria-labelledby="quickread-heading" className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-              <h2 id="quickread-heading" className="text-sm text-[var(--muted-foreground)]">Quick read</h2>
+            <section aria-labelledby="quickread-heading" className="panel p-4">
+              <h2 id="quickread-heading" className="label">Quick read</h2>
               <dl className="mt-2 flex flex-col gap-2 text-sm">
                 <div className="flex items-baseline justify-between gap-3">
                   <dt>Average per day</dt>
@@ -282,7 +282,7 @@ export default function OverviewPage() {
 
           {signals.length > 0 && (
             <section aria-labelledby="signals-heading" className="flex flex-col gap-2">
-              <h2 id="signals-heading" className="text-base font-semibold">
+              <h2 id="signals-heading" className="label">
                 <span aria-hidden="true" className="marker">[CHANGE] </span>What changed
               </h2>
               {signals.map((s) => (
@@ -290,7 +290,7 @@ export default function OverviewPage() {
                   key={s.id}
                   href={signalHref(s)}
                   aria-label={s.text}
-                  className="block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3 transition-colors hover:bg-[var(--muted)]"
+                  className="panel block p-3 transition-colors hover:bg-[var(--muted)]"
                 >
                   <span className="text-xs text-[var(--muted-foreground)]">{s.title}</span>
                   <span className="block text-sm">{s.text}</span>
@@ -303,7 +303,7 @@ export default function OverviewPage() {
         <div className="flex flex-col gap-6">
           <section aria-labelledby="cat-heading" aria-busy={loading}>
             <div className="mb-2 flex items-center justify-between">
-              <h2 id="cat-heading" className="text-base font-semibold">By category</h2>
+              <h2 id="cat-heading" className="label">By category</h2>
               <span className="mono text-xs text-[var(--muted-foreground)]">{rows.length} records</span>
             </div>
             {loading ? (
@@ -337,7 +337,7 @@ export default function OverviewPage() {
 
           <section aria-labelledby="recent-heading" aria-busy={loading}>
             <div className="mb-2 flex items-center justify-between">
-              <h2 id="recent-heading" className="text-base font-semibold">
+              <h2 id="recent-heading" className="label">
                 <span aria-hidden="true" className="marker">[RECORDS] </span>Recent transactions
               </h2>
               <a href="/transactions" className="text-sm underline-offset-4 hover:underline">
@@ -347,7 +347,7 @@ export default function OverviewPage() {
             {loading ? (
               <SkeletonRows rows={4} />
             ) : recent.length === 0 ? (
-              <div className="rounded-[var(--radius)] border border-[var(--border)] p-4">
+              <div className="panel p-4">
                 <p className="text-sm">No expenses yet.</p>
                 <p className="mt-2">
                   <Button onClick={openNew}>Record first expense</Button>

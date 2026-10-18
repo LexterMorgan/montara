@@ -4,7 +4,9 @@ Source of truth for scope: `docs/PRD.md`. This doc owns visual decisions only.
 
 ## 1. Direction
 
-Premium instrument panel, ASCII details. Warm off-white surfaces, ink-dark text, one restrained accent. Sans body, monospace + tabular numerals for amounts/dates/labels. Thin rules, precise alignment, generous spacing around key figures, restrained radii. ASCII markers (`[CHANGE]`, `[PERIOD]`, `[RECORDS]`) sparingly, decorative only, `aria-hidden`.
+Premium instrument panel, ASCII details. Warm off-white surfaces, ink-dark text, one restrained accent. Sans body, monospace + tabular numerals for amounts/dates/labels. Cards are layered, not lined: surface contrast plus a hairline shadow rather than a 1px border (2026-10-18). Precise alignment, generous spacing around key figures, larger type moments for hero figures. Sections and cards label themselves with one mono / uppercase / 0.04em tracking / muted treatment (`.label`, and `.marker` for the decorative `[CHANGE]`, `[PERIOD]`, `[RECORDS]` markers). Lines stay where they carry meaning: table row rules, form field bounds, dialog edges.
+
+Allowed: hairline shadows on layered surfaces (`0 1px 2px rgb(0 0 0 / 0.05)`).
 
 Avoid: summary-card grids, badge spam, gradients/glass, neon terminal, fake prompts, meaningless animation, emoji categories, stock illustrations, placeholder marketing, tiny low-contrast type.
 
@@ -21,16 +23,16 @@ Base: shadcn neutral. Override in `globals.css` `:root` / `[data-theme]` only; c
 | `--primary` / `--primary-foreground` | `#9A3412` burnt sienna / white | `#E07A3F` / `#1C1917` ink text | key actions, active period, delta highlights | button text ≥ 4.5:1 both (dark accent takes dark text) |
 | `--border` | `#D8CFC2` | `#493B30` | rules, card edges | — |
 | `--destructive` | `#B3261E` | `#F2A49C` | delete, errors | error text readable on page bg both |
-| `--radius` | `0.375rem` | same | base; inputs `sm`, cards `md`, sheets `lg` | — |
+| `--radius` | `0.5rem` (8px) | same | controls; layered panels 12px (`.panel`); mobile sheet `lg` top only | — |
 
 Accent restraint rule: one accent per viewport — the primary action or the delta figure, never both competing. Deltas: increase = foreground bold (not red/green); direction carried by `+`/`−` sign and words, never color alone.
 
 ## 3. Type / spacing / numbers
 
-- Body: system sans stack (`Inter` fallback system-ui if installed; no webfont dependency at Stage A — ponytail: system stack, add Inter when brand polish proven needed). Scale: 12 label / 14 body / 16 lead / 20 section / 28 hero total / 32 landing only.
+- Body: system sans stack (`Inter` fallback system-ui if installed; no webfont dependency at Stage A — ponytail: system stack, add Inter when brand polish proven needed). Scale: 12 label / 14 body / 16 lead / 20 section / 32 phone hero total, 44 desktop hero total / 48–72 landing display.
 - Figures: `font-mono` + `tabular-nums`, right-aligned in tables/lists, never centered. Dates `YYYY-MM-DD` mono 12–13px. Currency format `id-ID`: `Rp4.600.000` (no decimals).
-- Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48. Key figure gets 32+ clearance. Rules: 1px `border-border`.
-- Radii: `--radius 0.375rem`; inputs `sm`, cards `md`, mobile sheet `lg` top only.
+- Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48. Key figure gets 32+ clearance. Rules: 1px `border-border` only where a line carries meaning (table rows, form fields, dialog edges); cards layer instead (`.panel`).
+- Radii: `--radius 0.5rem` (8px) for controls; layered panels 12px (`.panel`); mobile sheet `lg` top only. Two deliberate exceptions on the landing hero: the shader frame stays 16px and its CTA stays pill (`rounded-full`).
 
 ## 4. States
 
@@ -59,3 +61,11 @@ Entry flow: trigger (+ / N) → Amount focused numeric → Date prefilled collap
 
 - Breakpoints: `<640` stacked + bottom action; `≥1024` two-col (total+signals left, breakdown+recent right).
 - Landmarks: header/main/nav; h1 = period label; signal cards = links with full-sentence names; decorative ASCII `aria-hidden`; deltas never color-only; focus ring always; `N` disabled while typing.
+
+## 8. Founder decisions
+
+Recorded here per PRD §3 (a direction change is a founder decision, not an agent choice).
+
+| # | Date | Decision | Status |
+|---|---|---|---|
+| DD1 | 2026-10-18 | Bolder instrument panel refresh — layering over lines, larger type moments. Cards use surface contrast + hairline shadow instead of borders; radius base 8px, panels 12px; hero figures step up and the overview total becomes the single accent moment. All avoid-list items (gradients/glass/neon/badge spam/meaningless motion) stay banned. | Approved — executed in this build |

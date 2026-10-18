@@ -20,6 +20,7 @@ type QuickAddProps = {
 // The dialog stays the full editor for dates, merchants, and notes.
 export function QuickAdd({ onSave, defaultCategory, defaultClassification, categories, recentCategories }: QuickAddProps) {
   const [amount, setAmount] = useState("");
+  const [date, setDate] = useState("");
   const [category, setCategory] = useState(defaultCategory);
   const [classification, setClassification] = useState<Classification>(defaultClassification);
   const [error, setError] = useState("");
@@ -27,6 +28,12 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
   const amountRef = useRef<HTMLInputElement>(null);
   const lastAdd = useRef(0);
   const picked = useRef(false);
+
+  // A static export prerenders with the build date, so the field starts empty
+  // and takes today's Jakarta date after mount.
+  useEffect(() => {
+    setDate(todayJakarta());
+  }, []);
 
   // A static export prerenders with the SSR prefs default, so adopt the stored
   // prefs once they arrive, unless the user already tapped a chip.
@@ -37,15 +44,15 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
   }, [defaultCategory, defaultClassification]);
 
   const ordered = orderCategories(recentCategories, categories);
+  const offToday = date !== "" && date !== todayJakarta();
 
   async function save(e?: FormEvent) {
     e?.preventDefault();
     if (busy) return;
     const now = Date.now();
     if (now - lastAdd.current < 300) return; // double-submit coalesce of a valid draft, PRD §5.7
-    const date = todayJakarta();
     const raw = { amount: amount.trim(), date, category, classification, merchant: "", note: "" };
-    const errors = validateDraft(raw, date);
+    const errors = validateDraft(raw, todayJakarta());
     const message = errors.amount ?? errors.category ?? errors.classification ?? errors.date;
     if (message) {
       // Keep the typed amount; the input stays focused so a fix is one keystroke.
@@ -70,7 +77,7 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
   }
 
   return (
-    <form noValidate onSubmit={save} aria-label="Quick add expense" className="surface-in rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3">
+    <form noValidate onSubmit={save} aria-label="Quick add expense" className="panel surface-in p-3">
       <div className="flex items-center gap-2">
         <label htmlFor="qa-amount" className="sr-only">
           Amount · IDR
@@ -104,6 +111,26 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
       <p aria-hidden="true" className="mono mt-1 h-5 text-sm text-[var(--muted-foreground)]">
         {amount ? money(Number(amount)) : ""}
       </p>
+
+      {/* Own line: a date box in the chip row would cut the scroller from ~186px
+          to ~74px at 390px. */}
+      <div className="mt-2 flex items-center gap-2">
+        <Input
+          id="qa-date"
+          name="date"
+          type="date"
+          aria-label="Expense date"
+          value={date}
+          aria-invalid={error && !date ? true : undefined}
+          title={offToday ? "Not today" : "Today"}
+          onChange={(e) => {
+            setDate(e.target.value);
+            setError("");
+          }}
+          className={`mono h-11 w-36 text-base sm:h-9 sm:w-32 sm:text-[13px] ${offToday ? "border-[var(--primary)]" : ""}`}
+        />
+        {offToday && <span className="mono text-xs text-[var(--primary)]">not today</span>}
+      </div>
 
       <div className="mt-3 flex items-center gap-2">
         <div role="group" aria-label="Category" className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">

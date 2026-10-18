@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ExpenseProvider>
         <header className="relative z-10 border-b border-[var(--border)]">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
-            <a href="/" aria-label="Montara home" className="flex items-center">
+            <a href="/" aria-label="Montara home" className="hidden shrink-0 items-center sm:flex">
               <img
                 src="/montara-logo.png"
                 alt=""
@@ -43,11 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 aria-hidden="true"
               />
             </a>
-            <nav aria-label="Main navigation" className="flex items-center gap-4 text-sm">
-              <a href="/overview" className="hover:underline">
+            <nav aria-label="Main navigation" className="flex flex-wrap items-center justify-end gap-2 text-sm sm:gap-4">
+              <a href="/overview" className="inline-flex min-h-11 items-center hover:underline sm:min-h-0">
                 Overview
               </a>
-              <a href="/transactions" className="hover:underline">
+              <a href="/transactions" className="inline-flex min-h-11 items-center hover:underline sm:min-h-0">
                 Transactions
               </a>
               <SyncControl />

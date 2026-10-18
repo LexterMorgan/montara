@@ -2,7 +2,7 @@ import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type T
 import { cn } from "./cn";
 
 const field =
-  "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus-visible:outline-2 focus-visible:outline-[var(--primary)] aria-[invalid=true]:border-[var(--destructive)]";
+  "w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-base outline-none focus-visible:outline-2 focus-visible:outline-[var(--primary)] aria-[invalid=true]:border-[var(--destructive)] sm:text-sm";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
   return <input ref={ref} className={cn(field, "h-9", className)} {...props} />;

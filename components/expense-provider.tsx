@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Expense } from "@/lib/calc";
-import { EXPENSE_KEY, loadExpenses, savePrefs } from "@/lib/storage";
+import { EXPENSE_KEY, loadExpenses, sameIds, savePrefs } from "@/lib/storage";
 import { useAuth } from "./auth-provider";
 import {
   deleteRemoteExpense,
@@ -257,13 +257,21 @@ export function ExpenseProvider({ children }: { children: ReactNode }) {
     }
     try {
       await upsertRemoteExpenses(local, userId);
-      try {
-        localStorage.removeItem(EXPENSE_KEY);
-      } catch {
-        // Import succeeded; a stale local copy is harmless and will be
-        // overwritten by the next local-mode write.
+      // The session can end mid-upload. A signed-out user may have recorded new
+      // local expenses since, so never clear their store from a stale import.
+      if (!syncedRef.current || userIdRef.current !== userId) return;
+      const current = loadExpenses();
+      let remaining = current.length;
+      if (sameIds(local, current)) {
+        try {
+          localStorage.removeItem(EXPENSE_KEY);
+          remaining = 0;
+        } catch {
+          // Import succeeded; a stale local copy is harmless and will be
+          // overwritten by the next local-mode write.
+        }
       }
-      setLocalImportCount(0);
+      setLocalImportCount(remaining);
       setExpenses(await listRemoteExpenses());
       setError("");
     } catch (err) {

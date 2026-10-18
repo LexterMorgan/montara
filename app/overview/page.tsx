@@ -8,6 +8,7 @@ import { EntryForm, type Draft } from "@/components/entry-form";
 import { DataTools } from "@/components/data-tools";
 import { ProfileControl } from "@/components/profile-control";
 import { UndoToast } from "@/components/undo-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   averagePerDay,
   buildSignals,
@@ -27,6 +28,7 @@ import {
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
 import { allCategories, usePrefsTick } from "@/lib/storage";
 import { useExpenses } from "@/components/expense-provider";
+import { Skeleton, SkeletonRows } from "@/components/ui/skeleton";
 
 const PERIODS: Period[] = ["Day", "Week", "Month", "Year"];
 
@@ -47,6 +49,9 @@ export default function OverviewPage() {
   const [entryOpen, setEntryOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [deleted, setDeleted] = useState<Expense | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [prefsTick, setPrefsTick] = useState(0);
   const recordRef = useRef<HTMLButtonElement>(null);
 
@@ -115,14 +120,23 @@ export default function OverviewPage() {
   }
 
   async function askDelete(e: Expense) {
-    if (!window.confirm(`Delete ${money(e.amount)} · ${formatDate(e.date)}? This cannot be undone.`)) return;
+    setDeleteError("");
+    setPendingDelete(e);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
-      // State changes only after the active store confirms; failure keeps
-      // existing rows visible and surfaces error below.
-      await remove(e.id);
-      setDeleted(e);
-    } catch {
-      // Hook error banner below shows the retryable message.
+      await remove(pendingDelete.id);
+      setDeleted(pendingDelete);
+      setPendingDelete(null);
+    } catch (err) {
+      // The row is kept and the message stays inside the dialog for a retry.
+      setDeleteError(err instanceof Error ? err.message : "Could not delete that expense.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -198,141 +212,151 @@ export default function OverviewPage() {
         </p>
       </section>
 
-      <section aria-labelledby="total-heading" className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-        <h2 id="total-heading" className="text-sm text-[var(--muted-foreground)]">Recorded total</h2>
-        <p className="mono my-2 text-[28px] font-semibold" aria-live="polite">
-          {loading ? "…" : money(amount)}
-        </p>
-        <p aria-live="polite" className="text-sm">
-          {cmp.kind === "future" ? (
-            "Future period — no comparison yet."
-          ) : !cmp.prevHasData ? (
-            "Not enough history to compare yet."
-          ) : (
-            <>
-              <strong>
-                {cmp.change >= 0 ? "+" : "−"}
-                {money(Math.abs(cmp.change))}
-                {cmp.percent !== null ? ` (${cmp.change >= 0 ? "+" : ""}${cmp.percent.toFixed(1)}%)` : ""}
-              </strong>{" "}
-              vs {formatDateRange(cmp.prevStart, cmp.prevEnd)}
-              {cmp.kind === "current" && <span className="text-[var(--muted-foreground)]"> · today incomplete</span>}
-            </>
-          )}
-        </p>
-      </section>
-
-      {rows.length > 0 && topCategory && largest && (
-        <section aria-labelledby="quickread-heading" className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-          <h2 id="quickread-heading" className="text-sm text-[var(--muted-foreground)]">Quick read</h2>
-          <dl className="mt-2 flex flex-col gap-2 text-sm">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt>Average per day</dt>
-              <dd className="mono">{money(averagePerDay(amount, cmp.curStart, cmp.curEnd))}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt>Top category</dt>
-              <dd className="text-right"><span className="mono">{money(topCategory.total)}</span> · {topCategory.category}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt>Largest expense</dt>
-              <dd className="text-right"><span className="mono">{money(largest.amount)}</span> · {largest.merchant || largest.category}</dd>
-            </div>
-          </dl>
-        </section>
-      )}
-
-      {signals.length > 0 && (
-        <section aria-labelledby="signals-heading" className="flex flex-col gap-2">
-          <h2 id="signals-heading" className="text-base font-semibold">
-            <span aria-hidden="true" className="marker">[CHANGE] </span>What changed
-          </h2>
-          {signals.map((s) => (
-            <a
-              key={s.id}
-              href={signalHref(s)}
-              aria-label={s.text}
-              className="block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3 hover:bg-[var(--muted)]"
-            >
-              <span className="text-xs text-[var(--muted-foreground)]">{s.title}</span>
-              <span className="block text-sm">{s.text}</span>
-            </a>
-          ))}
-        </section>
-      )}
-
-      <section aria-labelledby="cat-heading">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 id="cat-heading" className="text-base font-semibold">By category</h2>
-          <span className="mono text-xs text-[var(--muted-foreground)]">{rows.length} records</span>
-        </div>
-        {groups.length === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">No recorded expenses in this period.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Count</TableHead>
-                <TableHead className="text-right">Recorded</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups.map((g) => (
-                <TableRow key={g.category}>
-                  <TableCell>{g.category}</TableCell>
-                  <TableCell className="mono text-right">{g.count}</TableCell>
-                  <TableCell className="mono text-right">{money(g.total)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-          Personal <span className="mono">{money(personal)}</span> · Work <span className="mono">{money(amount - personal)}</span>
-        </p>
-      </section>
-
-      <section aria-labelledby="recent-heading">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 id="recent-heading" className="text-base font-semibold">
-            <span aria-hidden="true" className="marker">[RECORDS] </span>Recent transactions
-          </h2>
-          <a href="/transactions" className="text-sm underline-offset-4 hover:underline">
-            View all
-          </a>
-        </div>
-        {recent.length === 0 ? (
-          <div className="rounded-[var(--radius)] border border-[var(--border)] p-4">
-            <p className="text-sm">No expenses yet.</p>
-            <p className="mt-2">
-              <Button onClick={openNew}>Record first expense</Button>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start lg:gap-x-8">
+        <div className="flex flex-col gap-6">
+          <section aria-labelledby="total-heading" aria-busy={loading} className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
+            <h2 id="total-heading" className="text-sm text-[var(--muted-foreground)]">Recorded total</h2>
+            <p className="mono my-2 text-[28px] font-semibold" aria-live="polite">
+              {loading ? <Skeleton className="h-7 w-40" /> : money(amount)}
             </p>
-          </div>
-        ) : (
-          <ul>
-            {recent.map((r) => (
-              <li key={r.id} className="flex items-start justify-between gap-3 border-b border-[var(--border)] py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{r.merchant || r.category}</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    <span className="mono" title={r.date}>{formatDate(r.date)}</span> · {r.category} · {r.classification}
-                  </p>
+            <p aria-live="polite" className="text-sm">
+              {cmp.kind === "future" ? (
+                "Future period — no comparison yet."
+              ) : !cmp.prevHasData ? (
+                "Not enough history to compare yet."
+              ) : (
+                <>
+                  <strong>
+                    {cmp.change >= 0 ? "+" : "−"}
+                    {money(Math.abs(cmp.change))}
+                    {cmp.percent !== null ? ` (${cmp.change >= 0 ? "+" : ""}${cmp.percent.toFixed(1)}%)` : ""}
+                  </strong>{" "}
+                  vs {formatDateRange(cmp.prevStart, cmp.prevEnd)}
+                  {cmp.kind === "current" && <span className="text-[var(--muted-foreground)]"> · today incomplete</span>}
+                </>
+              )}
+            </p>
+          </section>
+
+          {rows.length > 0 && topCategory && largest && (
+            <section aria-labelledby="quickread-heading" className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
+              <h2 id="quickread-heading" className="text-sm text-[var(--muted-foreground)]">Quick read</h2>
+              <dl className="mt-2 flex flex-col gap-2 text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt>Average per day</dt>
+                  <dd className="mono">{money(averagePerDay(amount, cmp.curStart, cmp.curEnd))}</dd>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="mono text-sm">{money(r.amount)}</span>
-                  <Button variant="ghost" size="sm" aria-label={`Edit ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => { setEditing(r); setEntryOpen(true); }}>
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" aria-label={`Delete ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => askDelete(r)}>
-                    Del
-                  </Button>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt>Top category</dt>
+                  <dd className="text-right"><span className="mono">{money(topCategory.total)}</span> · {topCategory.category}</dd>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt>Largest expense</dt>
+                  <dd className="text-right"><span className="mono">{money(largest.amount)}</span> · {largest.merchant || largest.category}</dd>
+                </div>
+              </dl>
+            </section>
+          )}
+
+          {signals.length > 0 && (
+            <section aria-labelledby="signals-heading" className="flex flex-col gap-2">
+              <h2 id="signals-heading" className="text-base font-semibold">
+                <span aria-hidden="true" className="marker">[CHANGE] </span>What changed
+              </h2>
+              {signals.map((s) => (
+                <a
+                  key={s.id}
+                  href={signalHref(s)}
+                  aria-label={s.text}
+                  className="block rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3 hover:bg-[var(--muted)]"
+                >
+                  <span className="text-xs text-[var(--muted-foreground)]">{s.title}</span>
+                  <span className="block text-sm">{s.text}</span>
+                </a>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <section aria-labelledby="cat-heading" aria-busy={loading}>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 id="cat-heading" className="text-base font-semibold">By category</h2>
+              <span className="mono text-xs text-[var(--muted-foreground)]">{rows.length} records</span>
+            </div>
+            {loading ? (
+              <SkeletonRows />
+            ) : groups.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)]">No recorded expenses in this period.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
+                    <TableHead className="text-right">Recorded</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groups.map((g) => (
+                    <TableRow key={g.category}>
+                      <TableCell>{g.category}</TableCell>
+                      <TableCell className="mono text-right">{g.count}</TableCell>
+                      <TableCell className="mono text-right">{money(g.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+              Personal <span className="mono">{money(personal)}</span> · Work <span className="mono">{money(amount - personal)}</span>
+            </p>
+          </section>
+
+          <section aria-labelledby="recent-heading" aria-busy={loading}>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 id="recent-heading" className="text-base font-semibold">
+                <span aria-hidden="true" className="marker">[RECORDS] </span>Recent transactions
+              </h2>
+              <a href="/transactions" className="text-sm underline-offset-4 hover:underline">
+                View all
+              </a>
+            </div>
+            {loading ? (
+              <SkeletonRows rows={4} />
+            ) : recent.length === 0 ? (
+              <div className="rounded-[var(--radius)] border border-[var(--border)] p-4">
+                <p className="text-sm">No expenses yet.</p>
+                <p className="mt-2">
+                  <Button onClick={openNew}>Record first expense</Button>
+                </p>
+              </div>
+            ) : (
+              <ul>
+                {recent.map((r) => (
+                  <li key={r.id} className="flex items-start justify-between gap-3 border-b border-[var(--border)] py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">{r.merchant || r.category}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        <span className="mono" title={r.date}>{formatDate(r.date)}</span> · {r.category} · {r.classification}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="mono text-sm">{money(r.amount)}</span>
+                      <Button variant="ghost" size="sm" aria-label={`Edit ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => { setEditing(r); setEntryOpen(true); }}>
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" aria-label={`Delete ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => askDelete(r)}>
+                        Del
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
@@ -354,6 +378,23 @@ export default function OverviewPage() {
           + Record expense
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this expense?"
+        description={
+          pendingDelete
+            ? `${money(pendingDelete.amount)} · ${formatDate(pendingDelete.date)}${pendingDelete.merchant ? ` · ${pendingDelete.merchant}` : ""}. This cannot be undone.`
+            : undefined
+        }
+        busy={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          setPendingDelete(null);
+          setDeleteError("");
+        }}
+      />
 
       {deleted && (
         <UndoToast

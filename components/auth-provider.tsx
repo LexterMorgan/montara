@@ -9,6 +9,7 @@ type AuthContextValue = {
   loading: boolean;
   configured: boolean;
   signIn: (email: string) => Promise<void>;
+  verifyCode: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
   configured: false,
   signIn: async () => {},
+  verifyCode: async () => {},
   signOut: async () => {},
 });
 
@@ -62,7 +64,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       options: { emailRedirectTo: `${window.location.origin}/overview` },
     });
-    if (error) throw new Error("Could not send that link. Check the address and try again.");
+    if (error) {
+      // GoTrue reuses over_email_send_rate_limit for both the per-address
+      // cooldown and the project's mailer cap, so confirm with its message
+      // before telling anyone to retry in a minute.
+      const perAddressCooldown = error.code === "over_email_send_rate_limit" && /for security purposes|after \d+ seconds/i.test(error.message ?? "");
+      throw new Error(
+        perAddressCooldown
+          ? "One email per address per minute. Wait a minute, then try again."
+          : error.status === 429
+            ? "This project's email limit was reached. Try again later."
+            : "Could not send that email. Check the address and try again.",
+      );
+    }
+  }
+
+  // The same email carries a 6-digit code: typing it keeps the session in the
+  // browser the user is already holding, instead of whichever app opens the link.
+  async function verifyCode(email: string, code: string): Promise<void> {
+    const client = getSupabase();
+    if (!client) throw new Error("Sync is not configured on this device.");
+    const { error } = await client.auth.verifyOtp({ email, token: code, type: "email" });
+    if (error) {
+      throw new Error(
+        error.code === "otp_expired"
+          ? "That code has expired. Request a new email."
+          : "That code did not work. Check the email and try again.",
+      );
+    }
   }
 
   async function signOut(): Promise<void> {
@@ -73,5 +102,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, loading, configured, signIn, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, configured, signIn, verifyCode, signOut }}>{children}</AuthContext.Provider>;
 }

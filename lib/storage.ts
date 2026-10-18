@@ -53,6 +53,13 @@ function isExpense(v: unknown): v is Expense {
   );
 }
 
+// True when both lists hold exactly the same expense ids, in any order.
+export function sameIds(a: Expense[], b: Expense[]): boolean {
+  if (a.length !== b.length) return false;
+  const ids = new Set(a.map((r) => r.id));
+  return b.every((r) => ids.has(r.id));
+}
+
 export function loadExpenses(): Expense[] {
   if (typeof window === "undefined") return [];
   try {

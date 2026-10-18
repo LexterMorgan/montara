@@ -7,10 +7,12 @@ import { Input, Select } from "@/components/ui/input";
 import { EntryForm, type Draft } from "@/components/entry-form";
 import { DataTools } from "@/components/data-tools";
 import { UndoToast } from "@/components/undo-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { formatDate, formatDateRange, money, total, type Classification, type Expense } from "@/lib/calc";
 import { downloadCSV, type CsvImportRow } from "@/lib/csv";
 import { allCategories, loadPrefs } from "@/lib/storage";
 import { useExpenses } from "@/components/expense-provider";
+import { Skeleton, SkeletonRows } from "@/components/ui/skeleton";
 
 function TransactionsPage() {
   const { expenses, loading, error, synced, add, update, remove, restore, addMany, refresh } = useExpenses();
@@ -21,6 +23,9 @@ function TransactionsPage() {
   const [to, setTo] = useState("");
   const [editing, setEditing] = useState<Expense | null>(null);
   const [deleted, setDeleted] = useState<Expense | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [entryOpen, setEntryOpen] = useState(false);
   const [prefsTick, setPrefsTick] = useState(0);
 
@@ -78,12 +83,23 @@ function TransactionsPage() {
   }
 
   async function askDelete(r: Expense) {
-    if (!window.confirm(`Delete ${money(r.amount)} · ${formatDate(r.date)}? This cannot be undone.`)) return;
+    setDeleteError("");
+    setPendingDelete(r);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
-      await remove(r.id);
-      setDeleted(r);
-    } catch {
-      // Hook error banner below shows the retryable message.
+      await remove(pendingDelete.id);
+      setDeleted(pendingDelete);
+      setPendingDelete(null);
+    } catch (err) {
+      // The row is kept and the message stays inside the dialog for a retry.
+      setDeleteError(err instanceof Error ? err.message : "Could not delete that expense.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -157,11 +173,11 @@ function TransactionsPage() {
             </Select>
           </label>
           <div className="flex gap-2">
-            <label className="block flex-1 text-xs">
+            <label className="block min-w-0 flex-1 text-xs">
               From
               <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date" />
             </label>
-            <label className="block flex-1 text-xs">
+            <label className="block min-w-0 flex-1 text-xs">
               To
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date" />
             </label>
@@ -181,10 +197,16 @@ function TransactionsPage() {
       </div>
 
       <p aria-live="polite" className="text-sm">
-        {loading ? "…" : <><span className="mono">{money(sum)}</span> recorded across <span className="mono">{filtered.length}</span> expenses · {rangeLabel}</>}
+        {loading ? (
+          <Skeleton className="inline-block h-4 w-56 align-middle" />
+        ) : (
+          <><span className="mono">{money(sum)}</span> recorded across <span className="mono">{filtered.length}</span> expenses · {rangeLabel}</>
+        )}
       </p>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <SkeletonRows rows={5} />
+      ) : filtered.length === 0 ? (
         expenses.length === 0 ? (
           <div className="rounded-[var(--radius)] border border-[var(--border)] p-4">
             <p className="text-sm">No expenses yet.</p>
@@ -242,6 +264,23 @@ function TransactionsPage() {
           onClose={() => setEntryOpen(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this expense?"
+        description={
+          pendingDelete
+            ? `${money(pendingDelete.amount)} · ${formatDate(pendingDelete.date)}${pendingDelete.merchant ? ` · ${pendingDelete.merchant}` : ""}. This cannot be undone.`
+            : undefined
+        }
+        busy={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onClose={() => {
+          setPendingDelete(null);
+          setDeleteError("");
+        }}
+      />
 
       {deleted && (
         <UndoToast

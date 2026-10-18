@@ -7,8 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EntryForm, type Draft } from "@/components/entry-form";
 import { DataTools } from "@/components/data-tools";
 import { ProfileControl } from "@/components/profile-control";
-import { UndoToast } from "@/components/undo-toast";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { QuickAdd } from "@/components/quick-add";
 import { cn } from "@/components/ui/cn";
 import {
@@ -44,16 +42,12 @@ function signalHref(s: { filter: { category?: string; classification?: string; s
 }
 
 export default function OverviewPage() {
-  const { expenses, loading, error, synced, add, update, remove, restore, addMany, refresh } = useExpenses();
+  const { expenses, loading, error, synced, add, update, addMany, refresh } = useExpenses();
   const [today, setToday] = useState(() => todayJakarta());
   const [period, setPeriod] = useState<Period>("Month");
   const [anchor, setAnchor] = useState(() => todayJakarta());
   const [entryOpen, setEntryOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
-  const [deleted, setDeleted] = useState<Expense | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
   // Id of the row just added, so only that row plays the rise animation once.
   const [newId, setNewId] = useState<string | null>(null);
   const [prefsTick, setPrefsTick] = useState(0);
@@ -131,37 +125,6 @@ export default function OverviewPage() {
     setEntryOpen(false);
     setEditing(null);
     requestAnimationFrame(() => recordRef.current?.focus());
-  }
-
-  async function askDelete(e: Expense) {
-    setDeleteError("");
-    setPendingDelete(e);
-  }
-
-  async function confirmDelete() {
-    if (!pendingDelete) return;
-    setDeleting(true);
-    setDeleteError("");
-    try {
-      await remove(pendingDelete.id);
-      setDeleted(pendingDelete);
-      setPendingDelete(null);
-    } catch (err) {
-      // The row is kept and the message stays inside the dialog for a retry.
-      setDeleteError(err instanceof Error ? err.message : "Could not delete that expense.");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function undoDelete() {
-    if (!deleted) return;
-    try {
-      await restore(deleted);
-      setDeleted(null);
-    } catch {
-      // Hook error banner below shows the retryable message.
-    }
   }
 
   async function importRows(rows: CsvImportRow[]) {
@@ -363,15 +326,7 @@ export default function OverviewPage() {
                         <span className="mono" title={r.date}>{formatDate(r.date)}</span> · {r.category} · {r.classification}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="mono text-sm">{money(r.amount)}</span>
-                      <Button variant="ghost" size="sm" aria-label={`Edit ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => { setEditing(r); setEntryOpen(true); }}>
-                        Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" aria-label={`Delete ${r.merchant || r.category} ${formatDate(r.date)}`} onClick={() => askDelete(r)}>
-                        Del
-                      </Button>
-                    </div>
+                    <span className="mono shrink-0 text-sm">{money(r.amount)}</span>
                   </li>
                 ))}
               </ul>
@@ -400,32 +355,6 @@ export default function OverviewPage() {
           + Record expense
         </Button>
       </div>
-
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="Delete this expense?"
-        description={
-          pendingDelete
-            ? `${money(pendingDelete.amount)} · ${formatDate(pendingDelete.date)}${pendingDelete.merchant ? ` · ${pendingDelete.merchant}` : ""}. This cannot be undone.`
-            : undefined
-        }
-        busy={deleting}
-        error={deleteError}
-        onConfirm={confirmDelete}
-        onClose={() => {
-          setPendingDelete(null);
-          setDeleteError("");
-        }}
-      />
-
-      {deleted && (
-        <UndoToast
-          key={deleted.id}
-          label={`Deleted ${money(deleted.amount)} · ${formatDate(deleted.date)}`}
-          onUndo={undoDelete}
-          onDone={() => setDeleted(null)}
-        />
-      )}
 
       {entryOpen && (
         <EntryForm

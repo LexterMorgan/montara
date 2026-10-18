@@ -7,6 +7,9 @@ import type { Draft } from "./entry-form";
 import { todayJakarta, validateDraft, money, type Classification } from "@/lib/calc";
 import { orderCategories } from "@/lib/storage";
 
+// Mirrors validateDraft's merchant limit for the inline aria-invalid hint.
+const MERCHANT_MAX = 60;
+
 type QuickAddProps = {
   // The page's own draft handler: same add path the EntryForm dialog uses.
   onSave: (draft: Draft) => Promise<unknown>;
@@ -21,6 +24,7 @@ type QuickAddProps = {
 export function QuickAdd({ onSave, defaultCategory, defaultClassification, categories, recentCategories }: QuickAddProps) {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
+  const [merchant, setMerchant] = useState("");
   const [category, setCategory] = useState(defaultCategory);
   const [classification, setClassification] = useState<Classification>(defaultClassification);
   const [error, setError] = useState("");
@@ -45,15 +49,16 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
 
   const ordered = orderCategories(recentCategories, categories);
   const offToday = date !== "" && date !== todayJakarta();
+  const merchantTooLong = merchant.trim().length > MERCHANT_MAX;
 
   async function save(e?: FormEvent) {
     e?.preventDefault();
     if (busy) return;
     const now = Date.now();
     if (now - lastAdd.current < 300) return; // double-submit coalesce of a valid draft, PRD §5.7
-    const raw = { amount: amount.trim(), date, category, classification, merchant: "", note: "" };
+    const raw = { amount: amount.trim(), date, category, classification, merchant: merchant.trim(), note: "" };
     const errors = validateDraft(raw, todayJakarta());
-    const message = errors.amount ?? errors.category ?? errors.classification ?? errors.date;
+    const message = errors.amount ?? errors.category ?? errors.classification ?? errors.date ?? errors.merchant;
     if (message) {
       // Keep the typed amount; the input stays focused so a fix is one keystroke.
       setError(message);
@@ -65,8 +70,10 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
     setBusy(true);
     setError("");
     try {
-      await onSave({ amount: Number(raw.amount), date, category, classification, merchant: "", note: "" });
+      await onSave({ amount: Number(raw.amount), date, category, classification, merchant: merchant.trim(), note: "" });
       setAmount("");
+      // Merchant is per-expense, so it clears; category and Personal/Work stay for repeat entry.
+      setMerchant("");
       // Category and Personal/Work stay selected for fast repeat entry.
       requestAnimationFrame(() => amountRef.current?.focus());
     } catch (err) {
@@ -129,7 +136,21 @@ export function QuickAdd({ onSave, defaultCategory, defaultClassification, categ
           }}
           className={`mono h-11 w-36 text-base sm:h-9 sm:w-32 sm:text-[13px] ${offToday ? "border-[var(--primary)]" : ""}`}
         />
-        {offToday && <span className="mono text-xs text-[var(--primary)]">not today</span>}
+        {offToday && <span className="mono shrink-0 text-xs text-[var(--primary)]">not today</span>}
+        <Input
+          id="qa-merchant"
+          name="merchant"
+          placeholder="Merchant (optional)"
+          aria-label="Merchant"
+          autoComplete="off"
+          value={merchant}
+          aria-invalid={merchantTooLong ? true : undefined}
+          onChange={(e) => {
+            setMerchant(e.target.value);
+            setError("");
+          }}
+          className="h-11 min-w-0 flex-1 sm:h-9"
+        />
       </div>
 
       <div className="mt-3 flex items-center gap-2">
